@@ -42,8 +42,8 @@ var RE_SEARCH_RESULTS = /searchid=\d+/;
 
 function isMatch(exp, subject) { return (typeof(exp) == "string" || exp instanceof String) ? exp == subject : exp.test(subject); }
 
-function isBlocked(blockList, subject) { 
-    return blockList.some( function(exp) {
+function matchesList(list, subject) { 
+    return list.some( function(exp) {
         return isMatch(exp, subject);
     });
 }
@@ -61,13 +61,13 @@ function block(e) {
     ( userBlock || defaultBlock )(e);
 }
 
-function frontPageRemoval() {
+function frontPageHandler() {
 
     //recent activity
     $("tbody#collapseobj_module_5 tr").slice(1).each(function() {
         var trSubforum = $(this).children("td:last-child").text();
 
-        if (isBlocked(subforumBlockList, trSubforum))
+        if (matchesList(subforumBlockList, trSubforum))
             block($(this));
     });
 
@@ -75,19 +75,19 @@ function frontPageRemoval() {
     $("tbody#collapseobj_module_20 table tbody tr").each(function() {
         var trSubforum = $(this).find("td:first-child").attr("title"); 
 
-        if (isBlocked(subforumBlockList, trSubforum))
+        if (matchesList(subforumBlockList, trSubforum))
             block($(this));
     })
 
 }
 
-function forumListRemoval() {
+function forumListHandler() {
 
     //categories
     $("div.contentWrapper tbody:has(tr:has(td.tcat))").each(function() { 
         var tbodiesCategory = $(this).find("td.tcat > a").text(); 
 
-        if(isBlocked(categoryBlockList, tbodiesCategory))
+        if(matchesList(categoryBlockList, tbodiesCategory))
             block($(this).next("tbody").andSelf());
 
     });
@@ -95,24 +95,24 @@ function forumListRemoval() {
     //subforum rows
     $("div.contentWrapper tbody[id^=collapseobj_forumbit_] tr[valign=top]").each(function() {
         var sub = $(this).find("td:nth-child(2) a[href^=forumdisplay] strong").text();
-        if (isBlocked(subforumBlockList, sub))
+        if (matchesList(subforumBlockList, sub))
             block($(this));
     });
 
 }
 
-function kpListRemoval() {
+function kpListHandler() {
 
     $("div.contentWrapper tbody tr").slice(2).each(function() {
         var trSubforum = $(this).find("td:nth-child(6) a").text();
 
-        if (isBlocked(subforumBlockList, trSubforum))
+        if (matchesList(subforumBlockList, trSubforum))
             block($(this));
     });
 
 }
 
-function searchPageRemoval() {
+function searchPageHandler() {
 
     var isResultView = RE_SEARCH_RESULTS.test(document.location.search);
 
@@ -121,7 +121,7 @@ function searchPageRemoval() {
         $("select[name^=forumchoice] option.fjdpth0").each(function (){
             var optionCategory = $(this).text().replace(/^\s+/, "");
 
-            if (isBlocked(categoryBlockList, optionCategory))
+            if (matchesList(categoryBlockList, optionCategory))
                 $(this).nextUntil(".fjdpth0").andSelf().remove();
 
         });
@@ -130,7 +130,7 @@ function searchPageRemoval() {
         $("select[name^=forumchoice] option.fjdpth1").each(function (){
             var optionSubforum = $(this).text().replace(/^\s+/, "");
 
-            if (isBlocked(subforumBlockList, optionSubforum))
+            if (matchesList(subforumBlockList, optionSubforum))
                 $(this).remove();
 
         });
@@ -141,7 +141,7 @@ function searchPageRemoval() {
             var trSubforum = $(this).find("td:nth-child(7) a[href^=forumdisplay]").text();
             var title = $(this).find("td:nth-child(3) a[id^=thread_title]").text();
 
-            if (isBlocked(subforumBlockList, trSubforum))
+            if (matchesList(subforumBlockList, trSubforum))
                 block($(this));
         })
     }
@@ -150,9 +150,9 @@ function searchPageRemoval() {
 
 $(document).ready(function(){
 
-    definePageAction("/", frontPageRemoval);
-    definePageAction("/forum/", forumListRemoval);
-    definePageAction("/forum/search.php", searchPageRemoval);
-    definePageAction("/forum/kvalitetspoeng.php", kpListRemoval);
+    definePageAction("/", frontPageHandler);
+    definePageAction("/forum/", forumListHandler);
+    definePageAction("/forum/search.php", searchPageHandler);
+    definePageAction("/forum/kvalitetspoeng.php", kpListHandler);
 
 });
