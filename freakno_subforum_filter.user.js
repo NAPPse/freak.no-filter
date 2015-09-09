@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             freakno_subforum_filter
 // @name           freak.no Filter
-// @version        1.1
+// @version        1.1.1
 // @namespace      robhol.net
 // @author         robhol
 // @description    
@@ -145,7 +145,7 @@ function searchPageHandler() {
         });
 
         //subforums
-        $("select[name^=forumchoice] option.fjdpth1").each(function (){
+        $("select[name^=forumchoice] option[class^=fjdpth]:not(.fjdpth0)").each(function (){
             var optionSubforum = $(this).text().replace(/^\s+/, "");
 
             if (matchesList(subforumBlockList, optionSubforum))
