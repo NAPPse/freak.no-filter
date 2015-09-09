@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             freakno_subforum_filter
-// @name           freak.no Subforum Filter
-// @version        1.0
+// @name           freak.no Filter
+// @version        1.1
 // @namespace      robhol.net
 // @author         robhol
 // @description    
@@ -28,6 +28,12 @@ var categoryBlockList = [
     //will NOT remove content from subforums belonging to this category.
 
     "Rusforum"
+];
+
+var threadBlockList = [
+    //list of individual threads to remove from search results and forum views
+
+    "Den ene tråden som irriterer ræva av deg"
 ];
 
 var removeFromSearchForumListing    = true; //if true, blocked categories, subforums (and their posts) will be removed from search forum listing (not results).
@@ -65,17 +71,19 @@ function frontPageHandler() {
 
     //recent activity
     $("tbody#collapseobj_module_5 tr").slice(1).each(function() {
-        var trSubforum = $(this).children("td:last-child").text();
+        var trThreadTitle = $(this).find("td:nth-child(2) a.irs").text();
+        var trSubforum    = $(this).children("td:last-child").text();
 
-        if (matchesList(subforumBlockList, trSubforum))
+        if (matchesList(subforumBlockList, trSubforum) || matchesList(threadBlockList, trThreadTitle))
             block($(this));
     });
 
     //promoted topics
     $("tbody#collapseobj_module_20 table tbody tr").each(function() {
-        var trSubforum = $(this).find("td:first-child").attr("title"); 
+        var trThreadTitle = $(this).find("td:nth-child(2) a:nth-child(2)").text();
+        var trSubforum    = $(this).find("td:first-child").attr("title");
 
-        if (matchesList(subforumBlockList, trSubforum))
+        if (matchesList(subforumBlockList, trSubforum) || matchesList(threadBlockList, trThreadTitle))
             block($(this));
     })
 
@@ -94,8 +102,18 @@ function forumListHandler() {
 
     //subforum rows
     $("div.contentWrapper tbody[id^=collapseobj_forumbit_] tr[valign=top]").each(function() {
-        var sub = $(this).find("td:nth-child(2) a[href^=forumdisplay] strong").text();
-        if (matchesList(subforumBlockList, sub))
+        var trSubforum = $(this).find("td:nth-child(2) a[href^=forumdisplay] strong").text();
+        if (matchesList(subforumBlockList, trSubforum))
+            block($(this));
+    });
+
+}
+
+function forumDisplayHandler() {
+
+    $("#threadslist tbody[id^=threadbits_forum_] tr:not(:has(td.thead))").each(function() { 
+        var trThreadTitle = $(this).find("a[id^=thread_title_]").text();
+        if (matchesList(threadBlockList, trThreadTitle))
             block($(this));
     });
 
@@ -138,10 +156,10 @@ function searchPageHandler() {
 
     if (isResultView && removeFromSearchResults) {
         $("#threadslist tr").slice(2, -1).each(function(){ 
+            var trThreadTitle = $(this).find("td:nth-child(3) a[id^=thread_title]").text();
             var trSubforum = $(this).find("td:nth-child(7) a[href^=forumdisplay]").text();
-            var title = $(this).find("td:nth-child(3) a[id^=thread_title]").text();
 
-            if (matchesList(subforumBlockList, trSubforum))
+            if (matchesList(subforumBlockList, trSubforum) || matchesList(threadBlockList, trThreadTitle))
                 block($(this));
         })
     }
@@ -153,6 +171,7 @@ $(document).ready(function(){
     definePageAction("/", frontPageHandler);
     definePageAction("/forum/", forumListHandler);
     definePageAction("/forum/search.php", searchPageHandler);
+    definePageAction("/forum/forumdisplay.php", forumDisplayHandler);
     definePageAction("/forum/kvalitetspoeng.php", kpListHandler);
 
 });
