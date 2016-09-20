@@ -1,17 +1,20 @@
 // ==UserScript==
 // @id             freakno_subforum_filter
 // @name           freak.no Filter
-// @version        1.1.1
+// @version        1.1.2
 // @namespace      robhol.net
 // @author         robhol
 // @description    
 // @include        *freak.no/*
 // @require        https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js
 // @run-at         document-end
+// @grant          GM_getValue
+// @grant          GM_setValue
 // ==/UserScript==
 
 // ==Config==
 //block lists support strings (exact match) or regex objects.
+
 
 var subforumBlockList = [ 
     //List of subforums to remove - applies to front page, forum listing, KP list
@@ -19,6 +22,7 @@ var subforumBlockList = [
 
     "Research Chemicals",
     "Legal highs",
+    "Andre stoffer",
     /^Rus/,
     /Utvalgte rusforumtråderg?$/ //trailing "g" occurs, for some reason, only in "promoted topics"
 ];
@@ -27,14 +31,22 @@ var categoryBlockList = [
     //list of entire categories to remove from forum listing in /forum/ and /forum/search.php
     //will NOT remove content from subforums belonging to this category.
 
-    "Rusforum"
+    "Rus"
 ];
 
 var threadBlockList = [
     //list of individual threads to remove from search results and forum views
 
-    "Den ene tråden som irriterer ræva av deg"
+    //"Emnetittel her"
 ];
+
+var removeFromRecentTopics          = true;
+
+var removeFromPromotedTopics        = true;
+
+var removeFromMyMostRecentTopics    = true;
+
+var removeFromKPListing             = true;
 
 var removeFromSearchForumListing    = true; //if true, blocked categories, subforums (and their posts) will be removed from search forum listing (not results).
                                             //note that custom blocking behavior will be ignored for these results.
@@ -67,33 +79,61 @@ function block(e) {
     ( userBlock || defaultBlock )(e);
 }
 
+function getFrontPageTableByHeader(x) {
+    return $("table.tborder:has(thead:contains('" + x + "'))");
+}
+
+function cleanFrontPageTable(headerContains, subforumSelector) {
+    
+    getFrontPageTableByHeader(headerContains).find("tr.thread.recthreads-row").each(function() {
+        
+        var self = $(this);
+        var trThreadTitle = self.find("a[id^=thread_title_]").text();
+        var trSubforum    = subforumSelector(self);
+        
+        if (matchesList(subforumBlockList, trSubforum) || matchesList(threadBlockList, trThreadTitle))
+            block(self);
+    });
+}
+
 function frontPageHandler() {
 
-    //recent activity
-    $("tbody#collapseobj_module_5 tr").slice(1).each(function() {
-        var trThreadTitle = $(this).find("td:nth-child(2) a.irs").text();
-        var trSubforum    = $(this).children("td:last-child").text();
-
-        if (matchesList(subforumBlockList, trSubforum) || matchesList(threadBlockList, trThreadTitle))
-            block($(this));
-    });
-
-    //promoted topics
-    $("tbody#collapseobj_module_20 table tbody tr").each(function() {
-        var trThreadTitle = $(this).find("td:nth-child(2) a:nth-child(2)").text();
-        var trSubforum    = $(this).find("td:first-child").attr("title");
-
-        if (matchesList(subforumBlockList, trSubforum) || matchesList(threadBlockList, trThreadTitle))
-            block($(this));
-    })
-
+    if (removeFromRecentTopics) {
+        cleanFrontPageTable("Siste aktivitet", function(tr) {
+            return tr.find(".btn-forum").text();
+        });
+    }
+    
+    var sideTableSubforumSelector = function(tr) {
+        return tr.find(".cat-sml-f-frontpage").attr("title");
+    };
+    
+    if (removeFromPromotedTopics)
+        cleanFrontPageTable("Promoterte", sideTableSubforumSelector);
+    
+    if (removeFromMyMostRecentTopics)
+        cleanFrontPageTable("Mine siste emner", sideTableSubforumSelector);
+    
+    //add config button
+    var configbutton = $("<a>Konfigurer filtre</a>");
+    configbutton.attr("id", "filter-config-button");
+    configbutton.addClass("btn btn-sml btn-grey");
+    
+    $("table.footer-stuff td.tfoot a:last-child").after(" - ", configbutton);
+    
+    //add config form
+    var configform = $('<form></form>');
+    configform.attr("id", "filter-config-form");
+    configform.hide();
+    
+    // $("table.footer-stuff").after(configform);
 }
 
 function forumListHandler() {
 
     //categories
-    $("div.contentWrapper tbody:has(tr:has(td.tcat))").each(function() { 
-        var tbodiesCategory = $(this).find("td.tcat > a").text(); 
+    $("div.contentWrapper tbody:has(tr:has(.theadcat))").each(function() { 
+        var tbodiesCategory = $(this).find("td.theadcat > a").text(); 
 
         if(matchesList(categoryBlockList, tbodiesCategory))
             block($(this).next("tbody").andSelf());
@@ -106,6 +146,8 @@ function forumListHandler() {
         if (matchesList(subforumBlockList, trSubforum))
             block($(this));
     });
+    
+    parseForumList($("body"))
 
 }
 
@@ -120,6 +162,9 @@ function forumDisplayHandler() {
 }
 
 function kpListHandler() {
+
+    if (!removeFromKPListing)
+        return;
 
     $("div.contentWrapper tbody tr").slice(2).each(function() {
         var trSubforum = $(this).find("td:nth-child(6) a").text();
@@ -155,16 +200,34 @@ function searchPageHandler() {
     }
 
     if (isResultView && removeFromSearchResults) {
+        //threads view
         $("#threadslist tr").slice(2, -1).each(function(){ 
             var trThreadTitle = $(this).find("td:nth-child(3) a[id^=thread_title]").text();
             var trSubforum = $(this).find("td:nth-child(7) a[href^=forumdisplay]").text();
 
             if (matchesList(subforumBlockList, trSubforum) || matchesList(threadBlockList, trThreadTitle))
                 block($(this));
-        })
+        });
+        
+        //posts view
+        $("table.tborder[id^=post]").each(function(){ 
+            var trThreadTitle = $(this).find("a[href^=showthread] strong").text();
+            var trSubforum = $(this).find(".thead a[href^=forumdisplay]").text();
+            console.log("["+trSubforum+"]["+trThreadTitle+"]")
+
+            if (matchesList(subforumBlockList, trSubforum) || matchesList(threadBlockList, trThreadTitle))
+                block($(this));
+        });
     }
 
 }
+
+function showConfig() {
+ 
+    
+}
+
+
 
 $(document).ready(function(){
 
@@ -173,5 +236,7 @@ $(document).ready(function(){
     definePageAction("/forum/search.php", searchPageHandler);
     definePageAction("/forum/forumdisplay.php", forumDisplayHandler);
     definePageAction("/forum/kvalitetspoeng.php", kpListHandler);
+    
+    $("#filter-config-button").click(showConfig);
 
 });
