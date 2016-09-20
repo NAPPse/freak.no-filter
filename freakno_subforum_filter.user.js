@@ -213,7 +213,6 @@ function searchPageHandler() {
         $("table.tborder[id^=post]").each(function(){ 
             var trThreadTitle = $(this).find("a[href^=showthread] strong").text();
             var trSubforum = $(this).find(".thead a[href^=forumdisplay]").text();
-            console.log("["+trSubforum+"]["+trThreadTitle+"]")
 
             if (matchesList(subforumBlockList, trSubforum) || matchesList(threadBlockList, trThreadTitle))
                 block($(this));
