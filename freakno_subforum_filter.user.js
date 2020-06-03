@@ -81,13 +81,9 @@ function block(e) {
     ( userBlock || defaultBlock )(e);
 }
 
-function getFrontPageTableByHeader(x) {
-    return $("table.tborder");
-}
-
-function cleanFrontPageTable(headerContains, subforumSelector) {
+function cleanFrontPageTable(subforumSelector) {
     
-    getFrontPageTableByHeader(headerContains).find("tr.thread.recthreads-row").each(function() {
+    $("table.tborder tr.thread.recthreads-row").each(function() {
         
         var self = $(this);
         var trThreadTitle = self.find("a[id^=thread_title_]").text();
@@ -101,34 +97,17 @@ function cleanFrontPageTable(headerContains, subforumSelector) {
 function frontPageHandler() {
 
     if (removeFromRecentTopics) {
-        cleanFrontPageTable("Siste aktivitet", function(tr) {
+        cleanFrontPageTable(function(tr) {
             return tr.find(".btn-forum").text();
         });
     }
-    
+
     var sideTableSubforumSelector = function(tr) {
         return tr.find(".cat-sml-f-frontpage").attr("title");
     };
     
     if (removeFromPromotedTopics)
-        cleanFrontPageTable("Promoterte", sideTableSubforumSelector);
-    
-    if (removeFromMyMostRecentTopics)
-        cleanFrontPageTable("Mine siste emner", sideTableSubforumSelector);
-    
-    //add config button
-    var configbutton = $("<a>Konfigurer filtre</a>");
-    configbutton.attr("id", "filter-config-button");
-    configbutton.addClass("btn btn-sml btn-grey");
-    
-    $("table.footer-stuff td.tfoot a:last-child").after(" - ", configbutton);
-    
-    //add config form
-    var configform = $('<form></form>');
-    configform.attr("id", "filter-config-form");
-    configform.hide();
-    
-    // $("table.footer-stuff").after(configform);
+        cleanFrontPageTable(sideTableSubforumSelector);
 }
 
 function forumListHandler() {
@@ -227,12 +206,6 @@ function searchPageHandler() {
 
 }
 
-function showConfig() {
- 
-    
-}
-
-
 $(document).ready(function(){
     
     definePageAction("/", frontPageHandler);
@@ -240,7 +213,5 @@ $(document).ready(function(){
     definePageAction("/forum/search.php", searchPageHandler);
     definePageAction("/forum/forumdisplay.php", forumDisplayHandler);
     definePageAction("/forum/kvalitetspoeng.php", kpListHandler);
-
-    $("#filter-config-button").click(showConfig);
 
 });
