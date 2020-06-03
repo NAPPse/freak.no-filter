@@ -1,16 +1,16 @@
 // ==UserScript==
-// @id             freakno_subforum_filter
 // @name           freak.no Filter
+// @id             freakno_subforum_filter
 // @version        1.1.2
 // @namespace      robhol.net
 // @author         robhol
-// @description    
 // @include        *freak.no/*
-// @require        https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js
+// @require        https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js
 // @run-at         document-end
 // @grant          GM_getValue
 // @grant          GM_setValue
 // ==/UserScript==
+
 
 // ==Config==
 //block lists support strings (exact match) or regex objects.
@@ -23,6 +23,8 @@ var subforumBlockList = [
     "Research Chemicals",
     "Legal highs",
     "Andre stoffer",
+    "Slutte med rus",
+    "Dyrking",
     /^Rus/,
     /Utvalgte rusforumtråderg?$/ //trailing "g" occurs, for some reason, only in "promoted topics"
 ];
@@ -30,7 +32,7 @@ var subforumBlockList = [
 var categoryBlockList = [
     //list of entire categories to remove from forum listing in /forum/ and /forum/search.php
     //will NOT remove content from subforums belonging to this category.
-
+  
     "Rus"
 ];
 
@@ -80,7 +82,7 @@ function block(e) {
 }
 
 function getFrontPageTableByHeader(x) {
-    return $("table.tborder:has(thead:contains('" + x + "'))");
+    return $("table.tborder");
 }
 
 function cleanFrontPageTable(headerContains, subforumSelector) {
@@ -131,12 +133,16 @@ function frontPageHandler() {
 
 function forumListHandler() {
 
-    //categories
-    $("div.contentWrapper tbody:has(tr:has(.theadcat))").each(function() { 
-        var tbodiesCategory = $(this).find("td.theadcat > a").text(); 
 
-        if(matchesList(categoryBlockList, tbodiesCategory))
-            block($(this).next("tbody").andSelf());
+    //categories
+    $("tbody tr.thead .theadcat").each(function() { 
+        var tbodiesCategory = $(this).find("a").text(); 
+
+        if(matchesList(categoryBlockList, tbodiesCategory)){
+          block($(this).parents("tbody").next("tbody"));
+          block($(this).parents("tbody"));
+        }
+
 
     });
 
@@ -146,8 +152,7 @@ function forumListHandler() {
         if (matchesList(subforumBlockList, trSubforum))
             block($(this));
     });
-    
-    parseForumList($("body"))
+
 
 }
 
@@ -167,9 +172,10 @@ function kpListHandler() {
         return;
 
     $("div.contentWrapper tbody tr").slice(2).each(function() {
-        var trSubforum = $(this).find("td:nth-child(6) a").text();
+        var trSubforum = $(this).find(".btn-forum").text();
+      	var trThreadTitle = $(this).find("a[href*=showthread]").text();
 
-        if (matchesList(subforumBlockList, trSubforum))
+        if (matchesList(subforumBlockList, trSubforum) || matchesList(threadBlockList, trThreadTitle))
             block($(this));
     });
 
@@ -185,7 +191,7 @@ function searchPageHandler() {
             var optionCategory = $(this).text().replace(/^\s+/, "");
 
             if (matchesList(categoryBlockList, optionCategory))
-                $(this).nextUntil(".fjdpth0").andSelf().remove();
+              	$(this).remove();
 
         });
 
@@ -201,14 +207,14 @@ function searchPageHandler() {
 
     if (isResultView && removeFromSearchResults) {
         //threads view
-        $("#threadslist tr").slice(2, -1).each(function(){ 
-            var trThreadTitle = $(this).find("td:nth-child(3) a[id^=thread_title]").text();
-            var trSubforum = $(this).find("td:nth-child(7) a[href^=forumdisplay]").text();
+        $("#threadslist tr").slice(2, -1).each(function(){
+            var trThreadTitle = $(this).find("[id^=td_threadtitle_] .card-wrapper a").text()
+            var trSubforum = $(this).find(".btn-forum").text();
 
             if (matchesList(subforumBlockList, trSubforum) || matchesList(threadBlockList, trThreadTitle))
                 block($(this));
         });
-        
+
         //posts view
         $("table.tborder[id^=post]").each(function(){ 
             var trThreadTitle = $(this).find("a[href^=showthread] strong").text();
@@ -227,15 +233,14 @@ function showConfig() {
 }
 
 
-
 $(document).ready(function(){
-
+    
     definePageAction("/", frontPageHandler);
     definePageAction("/forum/", forumListHandler);
     definePageAction("/forum/search.php", searchPageHandler);
     definePageAction("/forum/forumdisplay.php", forumDisplayHandler);
     definePageAction("/forum/kvalitetspoeng.php", kpListHandler);
-    
+
     $("#filter-config-button").click(showConfig);
 
 });
